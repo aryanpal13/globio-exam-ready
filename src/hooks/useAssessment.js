@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { QUESTIONS } from '../data/questions.js';
 import { calculateAssessmentResult } from '../utils/scoring.js';
 
-const STORAGE_KEY = 'globio_assessment_state_v2';
-const HISTORY_KEY = 'globio_assessment_history_v2';
+const STORAGE_KEY = 'globio_assessment_state_v3';
+const HISTORY_KEY = 'globio_assessment_history_v3';
+const PROFILE_KEY = 'globio_learner_profile_v3';
+
+const DEFAULT_TIME_SECONDS = 600; // 10 minutes (Goethe A1 standard pacing for 12 questions)
 
 export function useAssessment() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -14,13 +17,30 @@ export function useAssessment() {
   const [result, setResult] = useState(null);
   const [hasStarted, setHasStarted] = useState(false);
 
-  // Restore history & active state from LocalStorage
+  // Personalization profile
+  const [examTimeline, setExamTimeline] = useState('1m');
+  const [dailyPracticeTime, setDailyPracticeTime] = useState('60');
+
+  // Exam Timer
+  const [secondsRemaining, setSecondsRemaining] = useState(DEFAULT_TIME_SECONDS);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [timerExpired, setTimerExpired] = useState(false);
+
+  // Restore history, profile & active session from LocalStorage
   useEffect(() => {
     try {
       // Restore past attempts
       const savedHistory = localStorage.getItem(HISTORY_KEY);
       if (savedHistory) {
         setHistory(JSON.parse(savedHistory));
+      }
+
+      // Restore personalization profile
+      const savedProfile = localStorage.getItem(PROFILE_KEY);
+      if (savedProfile) {
+        const parsedProfile = JSON.parse(savedProfile);
+        if (parsedProfile.examTimeline) setExamTimeline(parsedProfile.examTimeline);
+        if (parsedProfile.dailyPracticeTime) setDailyPracticeTime(parsedProfile.dailyPracticeTime);
       }
 
       // Restore active session
@@ -34,6 +54,9 @@ export function useAssessment() {
             Math.min(Math.max(parsed.currentQuestionIndex, 0), QUESTIONS.length - 1)
           );
         }
+        if (typeof parsed.secondsRemaining === 'number') {
+          setSecondsRemaining(parsed.secondsRemaining);
+        }
         if (parsed.hasStarted !== undefined) setHasStarted(parsed.hasStarted);
         if (parsed.isCompleted) {
           setIsCompleted(true);
@@ -45,6 +68,25 @@ export function useAssessment() {
     }
   }, []);
 
+  // Timer countdown ticker
+  useEffect(() => {
+    let interval = null;
+    if (hasStarted && !isCompleted && isTimerRunning && secondsRemaining > 0) {
+      interval = setInterval(() => {
+        setSecondsRemaining((prev) => {
+          if (prev <= 1) {
+            setTimerExpired(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [hasStarted, isCompleted, isTimerRunning, secondsRemaining]);
+
   // Persist active state changes
   useEffect(() => {
     try {
@@ -52,6 +94,7 @@ export function useAssessment() {
         answers,
         unsure,
         currentQuestionIndex,
+        secondsRemaining,
         isCompleted,
         hasStarted,
         savedAt: new Date().toISOString()
@@ -60,7 +103,7 @@ export function useAssessment() {
     } catch (err) {
       console.warn('Could not save assessment state to LocalStorage', err);
     }
-  }, [answers, unsure, currentQuestionIndex, isCompleted, hasStarted]);
+  }, [answers, unsure, currentQuestionIndex, secondsRemaining, isCompleted, hasStarted]);
 
   // Persist history changes
   useEffect(() => {
@@ -70,6 +113,18 @@ export function useAssessment() {
       console.warn('Could not save history to LocalStorage', err);
     }
   }, [history]);
+
+  // Persist profile changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        PROFILE_KEY,
+        JSON.stringify({ examTimeline, dailyPracticeTime })
+      );
+    } catch (err) {
+      console.warn('Could not save profile to LocalStorage', err);
+    }
+  }, [examTimeline, dailyPracticeTime]);
 
   const selectAnswer = useCallback((questionId, optionIndex) => {
     setAnswers((prev) => ({
@@ -102,17 +157,30 @@ export function useAssessment() {
   const startAssessment = useCallback(() => {
     setHasStarted(true);
     setIsCompleted(false);
-    // Explicitly guarantee starting at question 1 (index 0)
     setCurrentQuestionIndex(0);
+    setSecondsRemaining(DEFAULT_TIME_SECONDS);
+    setIsTimerRunning(true);
+    setTimerExpired(false);
   }, []);
 
   const resumeAssessment = useCallback(() => {
     setHasStarted(true);
     setIsCompleted(false);
+    setIsTimerRunning(true);
+  }, []);
+
+  const toggleTimer = useCallback(() => {
+    setIsTimerRunning((prev) => !prev);
   }, []);
 
   const completeAssessment = useCallback(() => {
+    setIsTimerRunning(false);
     const computedResult = calculateAssessmentResult(answers, unsure);
+    // Add personalization profile context
+    computedResult.plan = dailyPracticeTime;
+    computedResult.exam = examTimeline;
+    computedResult.timeTakenSeconds = DEFAULT_TIME_SECONDS - secondsRemaining;
+
     setResult(computedResult);
     setIsCompleted(true);
 
@@ -127,10 +195,11 @@ export function useAssessment() {
         band: computedResult.band,
         correct: computedResult.correctCount,
         total: computedResult.totalQuestions,
-        blank: computedResult.unansweredCount
+        blank: computedResult.unansweredCount,
+        timeTakenSeconds: DEFAULT_TIME_SECONDS - secondsRemaining
       }
     ]);
-  }, [answers, unsure]);
+  }, [answers, unsure, secondsRemaining, dailyPracticeTime, examTimeline]);
 
   const resetAssessment = useCallback(() => {
     setAnswers({});
@@ -139,6 +208,9 @@ export function useAssessment() {
     setIsCompleted(false);
     setResult(null);
     setHasStarted(false);
+    setSecondsRemaining(DEFAULT_TIME_SECONDS);
+    setIsTimerRunning(false);
+    setTimerExpired(false);
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (err) {
@@ -177,6 +249,14 @@ export function useAssessment() {
     isCurrentAnswered,
     unansweredQuestions,
     unansweredCount: unansweredQuestions.length,
+    examTimeline,
+    dailyPracticeTime,
+    setExamTimeline,
+    setDailyPracticeTime,
+    secondsRemaining,
+    isTimerRunning,
+    timerExpired,
+    toggleTimer,
     selectAnswer,
     toggleUnsure,
     goToNextQuestion,

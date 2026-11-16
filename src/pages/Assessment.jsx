@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { ProgressBar } from '../components/common/ProgressBar';
 import { QuestionCard } from '../components/assessment/QuestionCard';
+import { QuestionPalette } from '../components/assessment/QuestionPalette';
+import { ExamTimer } from '../components/assessment/ExamTimer';
 import { UnansweredReviewModal } from '../components/assessment/UnansweredReviewModal';
+import { Layers, X } from 'lucide-react';
 
 export function Assessment({
   questions,
@@ -12,6 +15,9 @@ export function Assessment({
   unsure,
   isCurrentAnswered,
   unansweredQuestions,
+  secondsRemaining,
+  isTimerRunning,
+  onToggleTimer,
   onSelectAnswer,
   onToggleUnsure,
   onNext,
@@ -20,6 +26,7 @@ export function Assessment({
   onComplete
 }) {
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showMobilePalette, setShowMobilePalette] = useState(false);
 
   const answeredCount = Object.keys(answers).length;
   const hasPrevious = currentIndex > 0;
@@ -33,64 +40,110 @@ export function Assessment({
     }
   };
 
+  const handleJumpFromMobile = (idx) => {
+    onJumpToQuestion(idx);
+    setShowMobilePalette(false);
+  };
+
   return (
-    <div className="max-w-2xl mx-auto px-3 sm:px-4 py-2 sm:py-4 space-y-2.5">
-      {/* Top Progress bar */}
-      <ProgressBar
-        currentIndex={currentIndex}
-        totalQuestions={totalQuestions}
-        answeredCount={answeredCount}
-        currentSkillLabel={currentQuestion.skillLabel || currentQuestion.skill}
-      />
-
-      {/* Compact Question Jumper (Pills 1..12) */}
-      <div className="flex items-center justify-between overflow-x-auto pb-1 gap-1 no-scrollbar">
-        {questions.map((q, idx) => {
-          const isAnswered = answers[q.id] !== undefined && answers[q.id] !== null;
-          const isCurrent = idx === currentIndex;
-          const isMarkedUnsure = !!unsure[q.id];
-
-          let btnClass = 'bg-white border-slate-200 text-slate-600 hover:border-slate-300';
-          if (isCurrent) {
-            btnClass = 'bg-[#18268e] text-white border-[#18268e] font-bold shadow-2xs scale-105';
-          } else if (isAnswered) {
-            btnClass = isMarkedUnsure
-              ? 'bg-amber-50 text-amber-800 border-amber-300 font-semibold'
-              : 'bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold';
-          }
-
-          return (
-            <button
-              key={q.id}
-              type="button"
-              onClick={() => onJumpToQuestion(idx)}
-              className={`min-w-[28px] sm:min-w-[34px] h-7 sm:h-7.5 rounded-lg border text-[11px] sm:text-xs flex items-center justify-center transition-all select-none shrink-0 ${btnClass}`}
-              title={`Question ${idx + 1} (${q.topic}): ${
-                isAnswered ? 'Answered' : 'Not answered'
-              }`}
-            >
-              <span>{idx + 1}</span>
-            </button>
-          );
-        })}
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+      {/* Mobile Bar: Timer & Palette Trigger */}
+      <div className="lg:hidden flex items-center justify-between gap-3 mb-3">
+        <div className="flex-1">
+          <ExamTimer
+            secondsRemaining={secondsRemaining}
+            isRunning={isTimerRunning}
+            onToggleTimer={onToggleTimer}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowMobilePalette(true)}
+          className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-[#18268e] shadow-2xs shrink-0"
+        >
+          <Layers className="w-4 h-4" />
+          <span>Palette ({answeredCount}/{totalQuestions})</span>
+        </button>
       </div>
 
-      {/* Main Question Card (compact, fits in single laptop viewport) */}
-      <QuestionCard
-        question={currentQuestion}
-        currentIndex={currentIndex}
-        totalQuestions={totalQuestions}
-        selectedAnswer={answers[currentQuestion.id]}
-        isUnsure={unsure[currentQuestion.id]}
-        onSelectAnswer={onSelectAnswer}
-        onToggleUnsure={onToggleUnsure}
-        onPrevious={onPrev}
-        onContinue={onNext}
-        onOpenReview={handleOpenReview}
-        hasPrevious={hasPrevious}
-        hasNext={hasNext}
-        isAnswered={isCurrentAnswered}
-      />
+      {/* 2-Column Desktop Exam Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Left Column: Progress & Stable Question Area (8 of 12 cols) */}
+        <div className="lg:col-span-8 space-y-3.5">
+          <ProgressBar
+            currentIndex={currentIndex}
+            totalQuestions={totalQuestions}
+            answeredCount={answeredCount}
+            currentSkillLabel={currentQuestion.skillLabel || currentQuestion.skill}
+          />
+
+          <QuestionCard
+            question={currentQuestion}
+            currentIndex={currentIndex}
+            totalQuestions={totalQuestions}
+            selectedAnswer={answers[currentQuestion.id]}
+            isUnsure={unsure[currentQuestion.id]}
+            onSelectAnswer={onSelectAnswer}
+            onToggleUnsure={onToggleUnsure}
+            onPrevious={onPrev}
+            onContinue={onNext}
+            onOpenReview={handleOpenReview}
+            hasPrevious={hasPrevious}
+            hasNext={hasNext}
+            isAnswered={isCurrentAnswered}
+          />
+        </div>
+
+        {/* Right Column: Timer & Question Palette (4 of 12 cols, Sticky on Desktop) */}
+        <div className="hidden lg:block lg:col-span-4 space-y-4 sticky top-20">
+          <ExamTimer
+            secondsRemaining={secondsRemaining}
+            isRunning={isTimerRunning}
+            onToggleTimer={onToggleTimer}
+          />
+
+          <QuestionPalette
+            questions={questions}
+            currentIndex={currentIndex}
+            answers={answers}
+            unsure={unsure}
+            onJumpToQuestion={onJumpToQuestion}
+            onOpenReview={handleOpenReview}
+          />
+        </div>
+      </div>
+
+      {/* Mobile Question Palette Drawer */}
+      {showMobilePalette && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-xs lg:hidden animate-in fade-in duration-200">
+          <div className="bg-white rounded-t-3xl border-t border-slate-200 shadow-2xl w-full max-h-[85vh] overflow-y-auto p-5 space-y-4 animate-in slide-in-from-bottom duration-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900">
+                Question Palette
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowMobilePalette(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <QuestionPalette
+              questions={questions}
+              currentIndex={currentIndex}
+              answers={answers}
+              unsure={unsure}
+              onJumpToQuestion={handleJumpFromMobile}
+              onOpenReview={() => {
+                setShowMobilePalette(false);
+                handleOpenReview();
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Unanswered Review Confirmation Modal */}
       <UnansweredReviewModal

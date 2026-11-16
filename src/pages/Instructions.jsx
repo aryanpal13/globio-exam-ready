@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { content } from '../data/content';
-import { BookOpen, Layers, FileText, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Layers, FileText, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 export function Instructions({ onStart, onBack }) {
   const iconList = [
@@ -12,8 +12,8 @@ export function Instructions({ onStart, onBack }) {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
-      <Card className="shadow-globio border-slate-200/90 p-8 sm:p-10">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <Card className="shadow-globio border-slate-200/90 p-6 sm:p-10">
         <div className="space-y-6">
           {/* Header */}
           <div className="space-y-2 pb-4 border-b border-slate-100">
@@ -29,11 +29,11 @@ export function Instructions({ onStart, onBack }) {
           </div>
 
           {/* 3 Areas */}
-          <div className="space-y-3.5">
+          <div className="space-y-3">
             {content.instructions.areas.map((area, idx) => (
               <div
                 key={idx}
-                className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/70"
+                className="flex items-start gap-3.5 p-4 rounded-2xl bg-slate-50 border border-slate-200/70"
               >
                 <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-2xs">
                   {iconList[idx] || <CheckCircle2 className="w-5 h-5 text-[#18268e]" />}
@@ -59,7 +59,7 @@ export function Instructions({ onStart, onBack }) {
           <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-100">
             <Button variant="secondary" size="md" onClick={onBack}>
               <ArrowLeft className="w-4 h-4 mr-1.5" />
-              <span>Back</span>
+              <span>Back to Home</span>
             </Button>
 
             <Button
@@ -67,7 +67,7 @@ export function Instructions({ onStart, onBack }) {
               size="lg"
               onClick={onStart}
               withArrow
-              className="px-8"
+              className="px-8 font-bold"
             >
               <span>{content.instructions.cta}</span>
             </Button>

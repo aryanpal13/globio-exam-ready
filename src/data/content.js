@@ -1,6 +1,6 @@
 /**
- * Globio "Am I Exam-Ready?" Brand & Assessment Copy
- * Explicitly aligned with Globio product philosophy and user requirements.
+ * Globio "Am I Exam-Ready?" Brand, Content & Personalization Options
+ * Aligned with the official Globio brand philosophy and Goethe A1 standards.
  */
 
 export const content = {
@@ -26,8 +26,8 @@ export const content = {
       },
       {
         icon: 'Clock',
-        label: 'Approximately 10 minutes',
-        desc: 'Take your time — there is no countdown pressure'
+        label: 'About 10 minutes (Goethe A1 Pacing)',
+        desc: 'Based on official ~50-60s per question pacing'
       },
       {
         icon: 'BookOpen',
@@ -37,7 +37,7 @@ export const content = {
       {
         icon: 'Sparkles',
         label: 'Personalised learning suggestions',
-        desc: 'Targeted actions for the specific topics that need review'
+        desc: 'Targeted actions and micro-drills for specific gaps'
       }
     ],
     primaryCta: "Let's begin",
@@ -50,15 +50,15 @@ export const content = {
     areas: [
       {
         title: 'Vocabulary',
-        desc: 'Understanding everyday German words, food, places in town, transport, and daily expressions.'
+        desc: 'Understanding everyday German words, food, places in town, transport, numbers, and daily routine verbs.'
       },
       {
         title: 'Grammar',
-        desc: 'Using basic German sentence structures correctly, verb positions, accusative articles, and modal verbs.'
+        desc: 'Using basic German sentence structures correctly, V2 verb positions, articles (der/die/das), and modal verbs.'
       },
       {
         title: 'Reading',
-        desc: 'Understanding short messages, notices, public schedules, invitations, and everyday written information.'
+        desc: 'Understanding short messages, opening hours notices, public train announcements, and store flyers.'
       }
     ],
     guidance:
@@ -66,10 +66,37 @@ export const content = {
     cta: 'Start assessment'
   },
 
+  personalization: {
+    title: 'Two quick questions to tailor your experience',
+    subtitle: 'These help shape your personalized practice plan and schedule. They never change your score.',
+    examTimeline: {
+      question: 'When are you thinking of taking the A1 examination?',
+      options: [
+        { id: '2w', label: 'Within 2 weeks' },
+        { id: '1m', label: 'Within a month' },
+        { id: 'later', label: 'In 2–3 months' },
+        { id: 'none', label: 'Just exploring' }
+      ]
+    },
+    dailyPractice: {
+      question: 'How much time can you dedicate to German practice each day?',
+      options: [
+        { id: '30', label: '30 minutes a day' },
+        { id: '60', label: '1 hour a day' },
+        { id: '120', label: '2 hours or more' }
+      ]
+    },
+    planAdvice: {
+      '30': 'about 10 minutes on one topic each day: read the rule, then complete the practice set.',
+      '60': 'about 20 minutes a day: read the tip, do the practice set, and write two original sentences.',
+      '120': 'about 35 minutes a day: practise two topics, review any mistakes, and test with flashcards.'
+    }
+  },
+
   assessment: {
     unansweredNotice: "This question hasn't been answered yet. You can revisit it before completing your assessment.",
     btnPrev: 'Previous',
-    btnContinue: 'Continue',
+    btnContinue: 'Next',
     btnReviewSubmit: 'Review and complete',
     btnChangeAnswer: 'Change answer',
     sectionLabels: {
@@ -153,4 +180,23 @@ export const content = {
     additionalNote:
       'A repeat assessment can help you track your progress. Try revisiting the recommended topics first so that your next attempt gives you a more meaningful comparison.'
   }
+};
+
+export const TIME_OPTS = [
+  ['30', '30 minutes a day'],
+  ['60', '1 hour a day'],
+  ['120', '2 hours or more']
+];
+
+export const EXAM_OPTS = [
+  ['2w', 'Within 2 weeks'],
+  ['1m', 'Within a month'],
+  ['later', 'In 2–3 months'],
+  ['none', 'Just exploring']
+];
+
+export const PLAN = {
+  '30': 'about 10 minutes on one topic each day: read the tip, then do the practice set.',
+  '60': 'about 20 minutes a day: read the tip, do the practice set, and write two original sentences.',
+  '120': 'about 35 minutes a day: practise two topics, review mistakes, and test with flashcards.'
 };
