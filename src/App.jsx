@@ -19,6 +19,10 @@ export function App() {
     currentQuestion,
     answers,
     unsure,
+    visited,
+    visitedCount,
+    percentageVisited,
+    percentageAnswered,
     history,
     hasStarted,
     isCompleted,
@@ -147,6 +151,9 @@ export function App() {
             currentQuestion={currentQuestion}
             answers={answers}
             unsure={unsure}
+            visitedCount={visitedCount}
+            percentageVisited={percentageVisited}
+            percentageAnswered={percentageAnswered}
             isCurrentAnswered={isCurrentAnswered}
             unansweredQuestions={unansweredQuestions}
             secondsRemaining={secondsRemaining}

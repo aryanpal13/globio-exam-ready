@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { QUESTIONS } from '../data/questions.js';
 import { calculateAssessmentResult } from '../utils/scoring.js';
 
-const STORAGE_KEY = 'globio_assessment_state_v3';
-const HISTORY_KEY = 'globio_assessment_history_v3';
-const PROFILE_KEY = 'globio_learner_profile_v3';
+const STORAGE_KEY = 'globio_assessment_state_v4';
+const HISTORY_KEY = 'globio_assessment_history_v4';
+const PROFILE_KEY = 'globio_learner_profile_v4';
 
 const DEFAULT_TIME_SECONDS = 600; // 10 minutes (Goethe A1 standard pacing for 12 questions)
 
@@ -12,6 +12,7 @@ export function useAssessment() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [unsure, setUnsure] = useState({});
+  const [visited, setVisited] = useState({ [QUESTIONS[0]?.id || 'q1']: true });
   const [history, setHistory] = useState([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [result, setResult] = useState(null);
@@ -47,14 +48,20 @@ export function useAssessment() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.answers) setAnswers(parsed.answers);
-        if (parsed.unsure) setUnsure(parsed.unsure);
-        if (typeof parsed.currentQuestionIndex === 'number') {
+        if (parsed.answers && typeof parsed.answers === 'object') setAnswers(parsed.answers);
+        if (parsed.unsure && typeof parsed.unsure === 'object') setUnsure(parsed.unsure);
+        if (parsed.visited && typeof parsed.visited === 'object') setVisited(parsed.visited);
+        
+        // Strict numeric check against NaN
+        if (Number.isFinite(parsed.currentQuestionIndex)) {
           setCurrentQuestionIndex(
             Math.min(Math.max(parsed.currentQuestionIndex, 0), QUESTIONS.length - 1)
           );
+        } else {
+          setCurrentQuestionIndex(0);
         }
-        if (typeof parsed.secondsRemaining === 'number') {
+
+        if (Number.isFinite(parsed.secondsRemaining)) {
           setSecondsRemaining(parsed.secondsRemaining);
         }
         if (parsed.hasStarted !== undefined) setHasStarted(parsed.hasStarted);
@@ -67,6 +74,18 @@ export function useAssessment() {
       console.warn('Could not restore assessment state from LocalStorage', err);
     }
   }, []);
+
+  // Update visited questions map when active index changes
+  useEffect(() => {
+    const safeIdx = Number.isFinite(currentQuestionIndex) ? currentQuestionIndex : 0;
+    const q = QUESTIONS[safeIdx];
+    if (q && q.id) {
+      setVisited((prev) => ({
+        ...prev,
+        [q.id]: true
+      }));
+    }
+  }, [currentQuestionIndex]);
 
   // Timer countdown ticker
   useEffect(() => {
@@ -93,8 +112,9 @@ export function useAssessment() {
       const stateToSave = {
         answers,
         unsure,
-        currentQuestionIndex,
-        secondsRemaining,
+        visited,
+        currentQuestionIndex: Number.isFinite(currentQuestionIndex) ? currentQuestionIndex : 0,
+        secondsRemaining: Number.isFinite(secondsRemaining) ? secondsRemaining : DEFAULT_TIME_SECONDS,
         isCompleted,
         hasStarted,
         savedAt: new Date().toISOString()
@@ -103,7 +123,7 @@ export function useAssessment() {
     } catch (err) {
       console.warn('Could not save assessment state to LocalStorage', err);
     }
-  }, [answers, unsure, currentQuestionIndex, secondsRemaining, isCompleted, hasStarted]);
+  }, [answers, unsure, visited, currentQuestionIndex, secondsRemaining, isCompleted, hasStarted]);
 
   // Persist history changes
   useEffect(() => {
@@ -141,15 +161,21 @@ export function useAssessment() {
   }, []);
 
   const goToNextQuestion = useCallback(() => {
-    setCurrentQuestionIndex((prev) => Math.min(prev + 1, QUESTIONS.length - 1));
+    setCurrentQuestionIndex((prev) => {
+      const safe = Number.isFinite(prev) ? prev : 0;
+      return Math.min(safe + 1, QUESTIONS.length - 1);
+    });
   }, []);
 
   const goToPrevQuestion = useCallback(() => {
-    setCurrentQuestionIndex((prev) => Math.max(prev - 1, 0));
+    setCurrentQuestionIndex((prev) => {
+      const safe = Number.isFinite(prev) ? prev : 0;
+      return Math.max(safe - 1, 0);
+    });
   }, []);
 
   const jumpToQuestion = useCallback((index) => {
-    if (index >= 0 && index < QUESTIONS.length) {
+    if (Number.isFinite(index) && index >= 0 && index < QUESTIONS.length) {
       setCurrentQuestionIndex(index);
     }
   }, []);
@@ -158,6 +184,7 @@ export function useAssessment() {
     setHasStarted(true);
     setIsCompleted(false);
     setCurrentQuestionIndex(0);
+    setVisited({ [QUESTIONS[0]?.id || 'q1']: true });
     setSecondsRemaining(DEFAULT_TIME_SECONDS);
     setIsTimerRunning(true);
     setTimerExpired(false);
@@ -204,6 +231,7 @@ export function useAssessment() {
   const resetAssessment = useCallback(() => {
     setAnswers({});
     setUnsure({});
+    setVisited({ [QUESTIONS[0]?.id || 'q1']: true });
     setCurrentQuestionIndex(0);
     setIsCompleted(false);
     setResult(null);
@@ -231,17 +259,33 @@ export function useAssessment() {
     (q) => answers[q.id] === undefined || answers[q.id] === null
   );
 
-  const currentQuestion = QUESTIONS[currentQuestionIndex] || QUESTIONS[0];
+  const safeIndex = Number.isFinite(currentQuestionIndex)
+    ? Math.min(Math.max(currentQuestionIndex, 0), QUESTIONS.length - 1)
+    : 0;
+
+  const currentQuestion = QUESTIONS[safeIndex] || QUESTIONS[0];
   const isCurrentAnswered =
     answers[currentQuestion.id] !== undefined && answers[currentQuestion.id] !== null;
 
+  const totalQuestions = QUESTIONS.length;
+  const answeredCount = Object.keys(answers).length;
+  const visitedCount = Object.keys(visited).length;
+  const percentageVisited =
+    totalQuestions > 0 ? Math.min(100, Math.round((visitedCount / totalQuestions) * 100)) : 0;
+  const percentageAnswered =
+    totalQuestions > 0 ? Math.min(100, Math.round((answeredCount / totalQuestions) * 100)) : 0;
+
   return {
     questions: QUESTIONS,
-    totalQuestions: QUESTIONS.length,
-    currentQuestionIndex,
+    totalQuestions,
+    currentQuestionIndex: safeIndex,
     currentQuestion,
     answers,
     unsure,
+    visited,
+    visitedCount,
+    percentageVisited,
+    percentageAnswered,
     history,
     hasStarted,
     isCompleted,
