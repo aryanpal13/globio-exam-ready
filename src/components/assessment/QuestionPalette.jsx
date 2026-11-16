@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, HelpCircle, Layers } from 'lucide-react';
+import { Layers } from 'lucide-react';
 
 export function QuestionPalette({
   questions,
@@ -45,8 +45,17 @@ export function QuestionPalette({
           let btnStyles = 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50';
           let indicatorIcon = null;
 
+          // Priority logic for styling
           if (isCurrent) {
-            btnStyles = 'bg-[#18268e] text-white border-[#18268e] font-extrabold shadow-sm ring-2 ring-[#18268e]/30 scale-105';
+            if (isAnswered && isUnsure) {
+              btnStyles = 'bg-amber-50 text-amber-900 border-amber-400 font-extrabold ring-2 ring-[#18268e] shadow-sm';
+              indicatorIcon = <span className="w-1.5 h-1.5 rounded-full bg-amber-500 absolute top-1 right-1" />;
+            } else if (isAnswered) {
+              btnStyles = 'bg-emerald-50 text-emerald-900 border-emerald-400 font-extrabold ring-2 ring-[#18268e] shadow-sm';
+              indicatorIcon = <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 absolute top-1 right-1" />;
+            } else {
+              btnStyles = 'bg-blue-50/50 text-[#18268e] border-blue-600 font-extrabold ring-2 ring-[#18268e] shadow-sm';
+            }
           } else if (isAnswered) {
             if (isUnsure) {
               btnStyles = 'bg-amber-50 text-amber-900 border-amber-300 font-bold';
@@ -89,7 +98,7 @@ export function QuestionPalette({
           <span>Not Answered ({remainingCount})</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#18268e] shrink-0" />
+          <span className="w-2.5 h-2.5 rounded-full ring-2 ring-[#18268e] bg-blue-100 shrink-0" />
           <span>Current Active</span>
         </div>
       </div>

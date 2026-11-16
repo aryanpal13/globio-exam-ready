@@ -12,9 +12,6 @@ export function Assessment({
   currentQuestion,
   answers,
   unsure,
-  visitedCount = 1,
-  percentageVisited = 8,
-  percentageAnswered = 0,
   isCurrentAnswered,
   unansweredQuestions,
   secondsRemaining,
@@ -30,8 +27,12 @@ export function Assessment({
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
 
+  // Safe index — prevents NaN from ever reaching children
+  const safeIndex = Number.isFinite(currentIndex) && currentIndex >= 0
+    ? Math.min(currentIndex, totalQuestions - 1)
+    : 0;
+
   const answeredCount = Object.keys(answers).length;
-  const safeIndex = Number.isFinite(currentIndex) ? currentIndex : 0;
   const hasPrevious = safeIndex > 0;
   const hasNext = safeIndex < totalQuestions - 1;
 
@@ -43,15 +44,10 @@ export function Assessment({
     }
   };
 
-  const handleJumpFromMobile = (idx) => {
-    onJumpToQuestion(idx);
-    setShowMobilePalette(false);
-  };
-
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-10 py-4 sm:py-6">
-      {/* Mobile Bar: Timer & Palette Trigger */}
-      <div className="lg:hidden flex items-center justify-between gap-3 mb-3">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      {/* ── Mobile Bar: Timer + Palette button ── */}
+      <div className="lg:hidden flex items-center justify-between gap-3 mb-4">
         <div className="flex-1">
           <ExamTimer
             secondsRemaining={secondsRemaining}
@@ -69,16 +65,17 @@ export function Assessment({
         </button>
       </div>
 
-      {/* 2-Column Desktop Exam Layout */}
+      {/* ── 2-Column Desktop Layout ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Column: Question Card (8 of 12 cols) */}
-        <div className="lg:col-span-8 space-y-3.5">
+
+        {/* Left: Question (8 cols) */}
+        <div className="lg:col-span-8">
           <QuestionCard
             question={currentQuestion}
             currentIndex={safeIndex}
             totalQuestions={totalQuestions}
             selectedAnswer={answers[currentQuestion.id]}
-            isUnsure={unsure[currentQuestion.id]}
+            isUnsure={!!unsure[currentQuestion.id]}
             onSelectAnswer={onSelectAnswer}
             onToggleUnsure={onToggleUnsure}
             onPrevious={onPrev}
@@ -89,14 +86,13 @@ export function Assessment({
           />
         </div>
 
-        {/* Right Column: Timer & Palette (4 of 12 cols, Sticky) */}
-        <div className="hidden lg:block lg:col-span-4 space-y-4 sticky top-20">
+        {/* Right: Timer + Palette (4 cols, sticky) */}
+        <div className="hidden lg:flex lg:col-span-4 flex-col gap-4 sticky top-20">
           <ExamTimer
             secondsRemaining={secondsRemaining}
             isRunning={isTimerRunning}
             onToggleTimer={onToggleTimer}
           />
-
           <QuestionPalette
             questions={questions}
             currentIndex={safeIndex}
@@ -108,14 +104,12 @@ export function Assessment({
         </div>
       </div>
 
-      {/* Mobile Question Palette Drawer */}
+      {/* ── Mobile Palette Drawer ── */}
       {showMobilePalette && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-sm lg:hidden">
           <div className="bg-white rounded-t-3xl border-t border-slate-200 shadow-2xl w-full max-h-[85vh] overflow-y-auto p-5 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900">
-                Question Palette
-              </h3>
+              <h3 className="text-base font-bold text-slate-900">Question Palette</h3>
               <button
                 type="button"
                 onClick={() => setShowMobilePalette(false)}
@@ -124,32 +118,25 @@ export function Assessment({
                 <X className="w-5 h-5" />
               </button>
             </div>
-
             <QuestionPalette
               questions={questions}
               currentIndex={safeIndex}
               answers={answers}
               unsure={unsure}
-              onJumpToQuestion={handleJumpFromMobile}
-              onOpenReview={() => {
-                setShowMobilePalette(false);
-                handleOpenReview();
-              }}
+              onJumpToQuestion={(idx) => { onJumpToQuestion(idx); setShowMobilePalette(false); }}
+              onOpenReview={() => { setShowMobilePalette(false); handleOpenReview(); }}
             />
           </div>
         </div>
       )}
 
-      {/* Unanswered Review Modal */}
+      {/* ── Unanswered Review Modal ── */}
       <UnansweredReviewModal
         isOpen={showReviewModal}
         onClose={() => setShowReviewModal(false)}
         unansweredQuestions={unansweredQuestions}
         onJumpToQuestion={onJumpToQuestion}
-        onConfirmSubmit={() => {
-          setShowReviewModal(false);
-          onComplete();
-        }}
+        onConfirmSubmit={() => { setShowReviewModal(false); onComplete(); }}
       />
     </div>
   );
