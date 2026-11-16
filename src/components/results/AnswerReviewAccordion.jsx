@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { Card } from '../common/Card';
-import { Badge } from '../common/Badge';
-import { ExplanationCard } from '../assessment/ExplanationCard';
-import { content } from '../../data/content';
-import { ChevronDown, ChevronUp, CheckCircle, XCircle, HelpCircle, FileText } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, XCircle, HelpCircle, AlertCircle } from 'lucide-react';
+import { content } from '../../data/content.js';
 
-export function AnswerReviewAccordion({ questions, userAnswers }) {
+export function AnswerReviewAccordion({ questions, userAnswers, unsure = {} }) {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedQuestions, setExpandedQuestions] = useState({});
 
@@ -76,14 +74,15 @@ export function AnswerReviewAccordion({ questions, userAnswers }) {
           </div>
 
           <div className="space-y-3">
-            {questions.map((q) => {
+            {questions.map((q, idx) => {
               const selectedIdx = userAnswers[q.id];
               const isUnanswered = selectedIdx === undefined || selectedIdx === null;
-              const isCorrect = selectedIdx === q.correctIndex;
+              const isCorrect = !isUnanswered && selectedIdx === q.answer;
+              const isUnsure = !!unsure[q.id];
               const isExpanded = !!expandedQuestions[q.id];
 
               let statusBadge = (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                   <CheckCircle className="w-3 h-3 text-emerald-600" />
                   Correct
                 </span>
@@ -91,14 +90,14 @@ export function AnswerReviewAccordion({ questions, userAnswers }) {
 
               if (isUnanswered) {
                 statusBadge = (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
                     <HelpCircle className="w-3 h-3 text-amber-600" />
                     Unanswered
                   </span>
                 );
               } else if (!isCorrect) {
                 statusBadge = (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
                     <XCircle className="w-3 h-3 text-rose-500" />
                     Needs Review
                   </span>
@@ -110,27 +109,27 @@ export function AnswerReviewAccordion({ questions, userAnswers }) {
                   key={q.id}
                   className="rounded-2xl border border-slate-200 overflow-hidden bg-slate-50/40 transition-colors"
                 >
-                  {/* Question Summary Bar */}
+                  {/* Summary Bar */}
                   <button
                     type="button"
                     onClick={() => toggleQuestion(q.id)}
-                    className="w-full text-left p-4 sm:p-5 flex items-center justify-between gap-3 hover:bg-slate-100/60 transition-colors"
+                    className="w-full text-left p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-slate-100/60 transition-colors"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold shrink-0">
-                        Q{q.id}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-6 h-6 rounded-md bg-white border border-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold shrink-0">
+                        {idx + 1}
                       </span>
                       <div className="truncate">
-                        <span className="text-xs font-semibold text-slate-500 mr-2 uppercase">
-                          [{q.skillLabel}]
+                        <span className="text-[11px] font-bold text-slate-500 mr-2 uppercase">
+                          [{q.skillLabel || q.skill}]
                         </span>
                         <span className="text-xs sm:text-sm font-bold text-slate-800 truncate">
-                          {q.question}
+                          {q.prompt}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2.5 shrink-0">
                       {statusBadge}
                       {isExpanded ? (
                         <ChevronUp className="w-4 h-4 text-slate-400" />
@@ -142,20 +141,25 @@ export function AnswerReviewAccordion({ questions, userAnswers }) {
 
                   {/* Expanded Detail View */}
                   {isExpanded && (
-                    <div className="p-4 sm:p-5 pt-0 border-t border-slate-100 bg-white space-y-4 text-xs sm:text-sm">
+                    <div className="p-4 sm:p-5 pt-0 border-t border-slate-100 bg-white space-y-3 text-xs sm:text-sm">
                       {/* Context passage if present */}
-                      {q.context && (
-                        <div className="mt-3 p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/60 text-slate-800 italic whitespace-pre-line text-xs">
-                          {q.context}
+                      {q.passage && (
+                        <div className="mt-3 p-3 rounded-xl bg-amber-50/70 border border-amber-200/70 text-slate-800 whitespace-pre-line text-xs font-medium">
+                          {q.passage}
                         </div>
                       )}
 
+                      {/* Question instruction & prompt */}
+                      <div className="pt-1">
+                        <p className="font-semibold text-slate-900">{q.prompt}</p>
+                      </div>
+
                       {/* Answer Comparison */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                         {/* Learner's answer */}
-                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                            {content.answerReview.labels.yourAnswer}
+                            Your answer:
                           </span>
                           <span
                             className={`font-semibold ${
@@ -167,30 +171,39 @@ export function AnswerReviewAccordion({ questions, userAnswers }) {
                             }`}
                           >
                             {isUnanswered
-                              ? content.answerReview.labels.unansweredTag
+                              ? 'This question was left unanswered.'
                               : q.options[selectedIdx]}
                           </span>
+                          {isUnsure && !isUnanswered && (
+                            <span className="block text-[11px] text-amber-700 font-medium mt-1">
+                              (you noted you weren't completely sure)
+                            </span>
+                          )}
                         </div>
 
                         {/* Correct answer */}
-                        <div className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200/80">
+                        <div className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-200/80">
                           <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 block mb-1">
-                            {content.answerReview.labels.correctAnswer}
+                            Correct answer:
                           </span>
                           <span className="font-semibold text-emerald-900">
-                            {q.options[q.correctIndex]}
+                            {q.options[q.answer]}
                           </span>
                         </div>
                       </div>
 
-                      {/* Educational Concept Breakdown */}
-                      <ExplanationCard
-                        isCorrect={isCorrect}
-                        isUnanswered={isUnanswered}
-                        explanation={q.explanation}
-                        selectedOptionText={!isUnanswered ? q.options[selectedIdx] : null}
-                        correctOptionText={q.options[q.correctIndex]}
-                      />
+                      {/* Concept explanation */}
+                      <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/70 space-y-1.5 text-xs sm:text-sm">
+                        <p className="font-bold text-[#18268e]">
+                          {isCorrect ? "That's right! " : "Let's understand the concept: "}
+                          <span className="font-normal text-slate-800">{q.why}</span>
+                        </p>
+                        {q.tip && (
+                          <p className="text-slate-600 italic pt-1 border-t border-blue-200/50 text-xs">
+                            💡 {q.tip}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

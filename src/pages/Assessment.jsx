@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { ProgressBar } from '../components/common/ProgressBar';
 import { QuestionCard } from '../components/assessment/QuestionCard';
 import { UnansweredReviewModal } from '../components/assessment/UnansweredReviewModal';
-import { Check } from 'lucide-react';
 
 export function Assessment({
   questions,
@@ -10,9 +9,11 @@ export function Assessment({
   currentIndex,
   currentQuestion,
   answers,
+  unsure,
   isCurrentAnswered,
   unansweredQuestions,
   onSelectAnswer,
+  onToggleUnsure,
   onNext,
   onPrev,
   onJumpToQuestion,
@@ -33,26 +34,29 @@ export function Assessment({
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
+    <div className="max-w-2xl mx-auto px-3 sm:px-4 py-2 sm:py-4 space-y-2.5">
       {/* Top Progress bar */}
       <ProgressBar
         currentIndex={currentIndex}
         totalQuestions={totalQuestions}
         answeredCount={answeredCount}
-        currentSkillLabel={currentQuestion.skillLabel}
+        currentSkillLabel={currentQuestion.skillLabel || currentQuestion.skill}
       />
 
-      {/* Quick Question Jumper (Pills 1..12) */}
-      <div className="flex items-center justify-between overflow-x-auto pb-1 gap-1.5 sm:gap-2 no-scrollbar">
+      {/* Compact Question Jumper (Pills 1..12) */}
+      <div className="flex items-center justify-between overflow-x-auto pb-1 gap-1 no-scrollbar">
         {questions.map((q, idx) => {
           const isAnswered = answers[q.id] !== undefined && answers[q.id] !== null;
           const isCurrent = idx === currentIndex;
+          const isMarkedUnsure = !!unsure[q.id];
 
           let btnClass = 'bg-white border-slate-200 text-slate-600 hover:border-slate-300';
           if (isCurrent) {
-            btnClass = 'bg-[#18268e] text-white border-[#18268e] font-bold shadow-xs scale-105';
+            btnClass = 'bg-[#18268e] text-white border-[#18268e] font-bold shadow-2xs scale-105';
           } else if (isAnswered) {
-            btnClass = 'bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold';
+            btnClass = isMarkedUnsure
+              ? 'bg-amber-50 text-amber-800 border-amber-300 font-semibold'
+              : 'bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold';
           }
 
           return (
@@ -60,8 +64,8 @@ export function Assessment({
               key={q.id}
               type="button"
               onClick={() => onJumpToQuestion(idx)}
-              className={`min-w-[34px] sm:min-w-[40px] h-8 sm:h-9 rounded-xl border text-xs sm:text-sm flex items-center justify-center transition-all select-none shrink-0 ${btnClass}`}
-              title={`Question ${idx + 1} (${q.skillLabel}): ${
+              className={`min-w-[28px] sm:min-w-[34px] h-7 sm:h-7.5 rounded-lg border text-[11px] sm:text-xs flex items-center justify-center transition-all select-none shrink-0 ${btnClass}`}
+              title={`Question ${idx + 1} (${q.topic}): ${
                 isAnswered ? 'Answered' : 'Not answered'
               }`}
             >
@@ -71,13 +75,15 @@ export function Assessment({
         })}
       </div>
 
-      {/* Main Question Card */}
+      {/* Main Question Card (compact, fits in single laptop viewport) */}
       <QuestionCard
         question={currentQuestion}
         currentIndex={currentIndex}
         totalQuestions={totalQuestions}
         selectedAnswer={answers[currentQuestion.id]}
+        isUnsure={unsure[currentQuestion.id]}
         onSelectAnswer={onSelectAnswer}
+        onToggleUnsure={onToggleUnsure}
         onPrevious={onPrev}
         onContinue={onNext}
         onOpenReview={handleOpenReview}

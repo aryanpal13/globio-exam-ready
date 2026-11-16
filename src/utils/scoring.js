@@ -1,222 +1,218 @@
-import { questions } from '../data/questions.js';
-import { recommendationCatalog } from '../data/recommendations.js';
+import { QUESTIONS } from '../data/questions.js';
+import { GROUPS } from '../data/recommendations.js';
 import { content } from '../data/content.js';
 
-/**
- * Calculates complete assessment metrics including:
- * - Overall score & percentage
- * - Skill-wise breakdown (Vocabulary, Grammar, Reading)
- * - Topic-level analysis
- * - Result category with gap checks
- * - Targeted recommendations (top 2-3)
- *
- * @param {Object} userAnswers Map of { [questionId]: selectedOptionIndex }
- * @returns {Object} Complete analysis report
- */
-export function calculateAssessmentResult(userAnswers = {}) {
-  const totalQuestions = questions.length;
-  let correctCount = 0;
-  let incorrectCount = 0;
-  let unansweredCount = 0;
+export const SKILLS = ['Vocabulary', 'Grammar', 'Reading'];
 
-  // Track skills
-  const skillsMap = {
-    vocabulary: { name: 'Vocabulary', total: 0, correct: 0, incorrect: 0, unanswered: 0 },
-    grammar: { name: 'Grammar', total: 0, correct: 0, incorrect: 0, unanswered: 0 },
-    reading: { name: 'Reading', total: 0, correct: 0, incorrect: 0, unanswered: 0 }
-  };
+export const bandFor = (p) => (p < 60 ? 1 : p < 70 ? 2 : p < 80 ? 3 : 4);
 
-  // Track missed topics
-  const missedTopicsMap = {}; // { topicKey: { count, questions: [] } }
+export const levelFor = (p) =>
+  p >= 100 ? 'strong' : p >= 75 ? 'good' : p >= 50 ? 'mid' : 'low';
 
-  questions.forEach((q) => {
-    const selected = userAnswers[q.id];
-    const skillObj = skillsMap[q.skill] || skillsMap.vocabulary;
-    skillObj.total += 1;
+export const evidenceForGroup = (g) => {
+  const parts = [];
+  if (g.wrong + g.blank >= 2) {
+    parts.push(
+      `You missed or left blank ${g.wrong + g.blank} of ${g.total} questions here, which looks like a pattern.`
+    );
+  } else if (g.wrong) {
+    parts.push('You missed one question here. This topic may benefit from more practice.');
+  } else if (g.blank) {
+    parts.push(
+      'You left a question here unanswered, so we cannot tell yet how comfortable you are with this topic.'
+    );
+  }
+  if (g.shaky) {
+    parts.push(
+      `You answered ${g.shaky === 1 ? 'one question' : `${g.shaky} questions`} correctly but weren't completely sure, so a quick refresher could help.`
+    );
+  }
+  return parts.join(' ');
+};
 
-    if (selected === undefined || selected === null) {
-      unansweredCount += 1;
-      skillObj.unanswered += 1;
+export function calculateAssessmentResult(answers = {}, unsure = {}) {
+  const skills = {};
+  const groups = {};
 
-      // Unanswered also counts as a learning gap to address
-      if (!missedTopicsMap[q.topic]) {
-        missedTopicsMap[q.topic] = { count: 0, questionIds: [], isUnanswered: true };
-      }
-      missedTopicsMap[q.topic].count += 1;
-      missedTopicsMap[q.topic].questionIds.push(q.id);
-    } else if (selected === q.correctIndex) {
-      correctCount += 1;
-      skillObj.correct += 1;
-    } else {
-      incorrectCount += 1;
-      skillObj.incorrect += 1;
+  SKILLS.forEach((s) => {
+    skills[s] = { name: s, correct: 0, wrong: 0, blank: 0, total: 0 };
+  });
 
-      if (!missedTopicsMap[q.topic]) {
-        missedTopicsMap[q.topic] = { count: 0, questionIds: [], isUnanswered: false };
-      }
-      missedTopicsMap[q.topic].count += 1;
-      missedTopicsMap[q.topic].questionIds.push(q.id);
+  QUESTIONS.forEach((q) => {
+    const a = answers[q.id];
+    const isBlank = a === undefined || a === null;
+    const isCorrect = !isBlank && a === q.answer;
+    const status = isBlank ? 'blank' : isCorrect ? 'correct' : 'wrong';
+
+    const sk = skills[q.skill];
+    if (sk) {
+      sk.total++;
+      sk[status]++;
+    }
+
+    if (!groups[q.group]) {
+      groups[q.group] = {
+        id: q.group,
+        total: 0,
+        wrong: 0,
+        blank: 0,
+        shaky: 0,
+        weight: 0
+      };
+    }
+    const g = groups[q.group];
+    g.total++;
+
+    if (status === 'wrong') {
+      g.wrong++;
+      g.weight += 1;
+    } else if (status === 'blank') {
+      g.blank++;
+      g.weight += 1;
+    } else if (status === 'correct' && unsure[q.id]) {
+      // Confidence is a signal only, NEVER a score penalty!
+      g.shaky++;
+      g.weight += 0.5;
     }
   });
 
-  const overallPercentage = Math.round((correctCount / totalQuestions) * 100);
+  let correctCount = 0;
+  let blankCount = 0;
 
-  // Skill percentages & interpretations
-  const skillBreakdown = Object.entries(skillsMap).map(([key, data]) => {
-    const pct = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
+  const skillBreakdown = SKILLS.map((k) => {
+    const s = skills[k];
+    const pct = s.total > 0 ? (s.correct / s.total) * 100 : 0;
+    const level = levelFor(pct);
 
-    let status = 'good';
     let statusLabel = 'Looking good';
     let interpretation = '';
 
-    if (key === 'vocabulary') {
+    if (k === 'Vocabulary') {
       if (pct >= 75) {
-        status = 'strong';
         statusLabel = 'Looking good';
-        interpretation = "You've recognised several everyday German words and expressions correctly. Keep practising words used in common situations to make your recall more consistent.";
+        interpretation =
+          "You've recognised several everyday German words and expressions correctly. Keep practising words used in common situations to make your recall more consistent.";
       } else if (pct >= 50) {
-        status = 'moderate';
         statusLabel = 'Building vocabulary';
-        interpretation = 'You have a solid base in common words, but certain public service, measurement, or daily routine terms could use a quick refresher.';
+        interpretation =
+          'You have a solid base in common words, but certain public service, measurement, or daily routine terms could use a quick refresher.';
       } else {
-        status = 'needs_attention';
         statusLabel = 'Needs attention';
-        interpretation = 'Everyday nouns and common shopping or transport vocabulary need more regular practice to feel natural during the examination.';
+        interpretation =
+          'Everyday nouns, numbers, and common routine verbs need more regular practice to feel natural during the examination.';
       }
-    } else if (key === 'grammar') {
+    } else if (k === 'Grammar') {
       if (pct >= 75) {
-        status = 'strong';
         statusLabel = 'Strong understanding';
-        interpretation = 'You demonstrate good command over core German sentence structures, verb positions, and accusative case articles.';
+        interpretation =
+          'You demonstrate good command over core German sentence structures, verb positions, and articles.';
       } else if (pct >= 50) {
-        status = 'moderate';
         statusLabel = 'Worth revisiting';
-        interpretation = 'Some basic sentence structures may need further attention. Revisiting word order and common verb forms could help strengthen your understanding.';
+        interpretation =
+          'Some basic sentence structures may need further attention. Revisiting word order and common verb forms could help strengthen your understanding.';
       } else {
-        status = 'needs_attention';
         statusLabel = 'Key focus area';
-        interpretation = 'German sentence structure and article declension require focused practice before booking your exam. Working through simple rules will build confidence.';
+        interpretation =
+          'German sentence structure, modal verbs, and article declension require focused practice before booking your exam.';
       }
-    } else if (key === 'reading') {
+    } else if (k === 'Reading') {
       if (pct >= 75) {
-        status = 'strong';
         statusLabel = 'Strong progress';
-        interpretation = "You're doing well at understanding short written information. Continue practising everyday messages, notices and simple passages.";
+        interpretation =
+          "You're doing well at understanding short written information. Continue practising everyday messages, notices and simple passages.";
       } else if (pct >= 50) {
-        status = 'moderate';
         statusLabel = 'Developing comprehension';
-        interpretation = 'You are able to extract key facts from short texts, though subtle details like time changes or polite requests warrant careful attention.';
+        interpretation =
+          'You are able to extract key facts from short texts, though subtle details like time changes or store notices warrant careful attention.';
       } else {
-        status = 'needs_attention';
         statusLabel = 'Needs practice';
-        interpretation = 'Extracting specific information from German store signs, emails, and announcements takes practice. Focus on scanning for key words and times.';
+        interpretation =
+          'Extracting specific information from German store signs, train announcements, and notices takes practice. Focus on scanning for key words and times.';
       }
     }
 
-    if (data.unanswered > 0) {
-      interpretation += ` (Note: ${data.unanswered} question${data.unanswered > 1 ? 's were' : ' was'} left unanswered in this section.)`;
+    if (s.blank > 0) {
+      interpretation += ` (Note: ${s.blank} question${s.blank > 1 ? 's were' : ' was'} left unanswered in this section.)`;
     }
+
+    correctCount += s.correct;
+    blankCount += s.blank;
 
     return {
-      key,
-      ...data,
-      percentage: pct,
-      status,
+      key: k.toLowerCase(),
+      name: k,
+      total: s.total,
+      correct: s.correct,
+      incorrect: s.wrong,
+      unanswered: s.blank,
+      percentage: Math.round(pct),
+      rawPct: pct,
+      level,
       statusLabel,
       interpretation
     };
   });
 
-  // Determine Result Category
-  let categoryKey = 'cat1';
-  if (overallPercentage >= 80) categoryKey = 'cat4';
-  else if (overallPercentage >= 70) categoryKey = 'cat3';
-  else if (overallPercentage >= 60) categoryKey = 'cat2';
-  else categoryKey = 'cat1';
+  const totalQuestions = QUESTIONS.length;
+  const incorrectCount = totalQuestions - correctCount - blankCount;
+  const rawPercentage = (correctCount / totalQuestions) * 100;
+  const overallPercentage = Math.round(rawPercentage);
 
+  const band = bandFor(rawPercentage);
+  const categoryKey = `cat${band}`;
   const categoryData = { ...content.resultCategories[categoryKey] };
 
-  // Rule: Check for skill gap anomaly (e.g. high overall score but very weak single skill)
-  const weakSkill = skillBreakdown.find((s) => s.percentage <= 25 && s.total > 0);
+  // Weak skills check (< 60%)
+  const weakSkills = skillBreakdown.filter((s) => s.rawPct < 60);
+
+  // Hidden gap warning: if overall >= 70% but any skill < 60%
   let specialGapNote = null;
-  if (overallPercentage >= 70 && weakSkill) {
-    specialGapNote = `While your overall performance is ${overallPercentage}%, your ${weakSkill.name} section scored ${weakSkill.percentage}%. Giving extra attention to ${weakSkill.name.toLowerCase()} will ensure your preparation remains well-balanced across all examination areas.`;
+  if (overallPercentage >= 70 && weakSkills.length > 0) {
+    const weakNames = weakSkills.map((s) => s.name).join(' and ');
+    specialGapNote = `Your overall result looks encouraging (${overallPercentage}%), but ${weakNames} ${
+      weakSkills.length > 1 ? 'need' : 'needs'
+    } more attention. A good total can hide one weaker area, so give ${
+      weakSkills.length > 1 ? 'those sections' : 'that section'
+    } focused review.`;
   }
 
-  // Generate Personalized Recommendations (Ranked, top 2-3)
-  const missedTopics = Object.keys(missedTopicsMap);
-  let selectedRecs = [];
-
-  missedTopics.forEach((topicKey) => {
-    const catalogItem = recommendationCatalog[topicKey];
-    if (catalogItem) {
-      selectedRecs.push({
+  // Recommendations: top 2-3 groups sorted by weight
+  const recs = Object.values(groups)
+    .filter((g) => g.weight > 0)
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, 3)
+    .map((g) => {
+      const catalogItem = GROUPS[g.id] || {};
+      return {
         ...catalogItem,
-        mistakeCount: missedTopicsMap[topicKey].count,
-        isUnanswered: missedTopicsMap[topicKey].isUnanswered
-      });
-    }
-  });
-
-  // Sort recommendations:
-  // 1. Higher mistake count first
-  // 2. Priority order defined in catalog
-  selectedRecs.sort((a, b) => {
-    if (b.mistakeCount !== a.mistakeCount) {
-      return b.mistakeCount - a.mistakeCount;
-    }
-    return (a.priority || 99) - (b.priority || 99);
-  });
-
-  // Limit to top 3 so we don't overwhelm learners (Section 8 requirement)
-  if (selectedRecs.length > 3) {
-    selectedRecs = selectedRecs.slice(0, 3);
-  }
-
-  // If learner scored 100% or very few errors, provide high-level maintenance recommendations
-  if (selectedRecs.length === 0) {
-    selectedRecs = [
-      {
-        id: 'rec_full_simulation',
-        skill: 'all',
-        skillLabel: 'Comprehensive',
-        title: 'Complete a full 4-module Goethe simulation',
-        priority: 1,
-        whyItMatters: 'Your vocabulary, grammar, and reading foundations are solid. The official Goethe A1 exam also includes Listening (Hören) and Speaking (Sprechen).',
-        whatToRevisit: [
-          'Practise audio dialogues and announcements at normal speaking speed.',
-          'Prepare your self-introduction (Sprechen Teil 1).',
-          'Practise formulating polite requests and answering questions with prompt cards (Sprechen Teil 2 & 3).'
-        ],
-        suggestedAction: 'Take a timed 4-module mock test to benchmark your listening and speaking skills under authentic exam conditions.'
-      },
-      {
-        id: 'rec_timed_pacing',
-        skill: 'reading',
-        skillLabel: 'Reading',
-        title: 'Practise timed reading comprehension',
-        priority: 2,
-        whyItMatters: 'Building reading speed helps you save valuable minutes during the 25-minute Goethe Lesen examination.',
-        whatToRevisit: [
-          'Skimming notices and store flyers for opening hours and dates.',
-          'Reading short personal emails without stopping for unknown words.'
-        ],
-        suggestedAction: 'Complete two full 15-question reading papers within the official 25-minute limit.'
-      }
-    ];
-  }
+        groupId: g.id,
+        mistakeCount: g.wrong,
+        blankCount: g.blank,
+        shakyCount: g.shaky,
+        weight: g.weight,
+        evidence: evidenceForGroup(g),
+        whatToRevisit: catalogItem.revisit || [],
+        suggestedAction: catalogItem.action || ''
+      };
+    });
 
   return {
     totalQuestions,
     correctCount,
     incorrectCount,
-    unansweredCount,
+    unansweredCount: blankCount,
     overallPercentage,
+    rawPercentage,
+    band,
     categoryKey,
     category: categoryData,
     skillBreakdown,
-    recommendations: selectedRecs,
+    weakSkills,
     specialGapNote,
-    userAnswers
+    recommendations: recs,
+    userAnswers: answers,
+    unsure
   };
 }
+
+export const score = calculateAssessmentResult;

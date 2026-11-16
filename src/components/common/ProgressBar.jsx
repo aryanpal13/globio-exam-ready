@@ -7,30 +7,31 @@ export function ProgressBar({
   currentSkillLabel
 }) {
   const currentStep = currentIndex + 1;
-  const progressPercent = Math.round((currentStep / totalQuestions) * 100);
-  const completionPercent = Math.round((answeredCount / totalQuestions) * 100);
+  // Progress bar reflects the question position advancing slowly: 8.3% at Q1 up to 100% at Q12
+  const progressPercent = Math.min(
+    Math.max(Math.round((currentStep / totalQuestions) * 100), 8),
+    100
+  );
 
   return (
-    <div className="w-full bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
-        <div className="flex items-center gap-2.5">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#18268e] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200/60">
+    <div className="w-full bg-white rounded-xl border border-slate-200/80 px-4 py-2.5 shadow-2xs">
+      <div className="flex items-center justify-between gap-2 mb-1.5 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="font-bold uppercase tracking-wider text-[#18268e] bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60 text-[11px]">
             {currentSkillLabel}
           </span>
-          <span className="text-sm font-semibold text-slate-800">
+          <span className="font-bold text-slate-800">
             Question {currentStep} of {totalQuestions}
           </span>
         </div>
 
-        <div className="text-xs text-slate-500 flex items-center gap-2">
+        <div className="text-[11px] text-slate-500 font-medium">
           <span>{answeredCount} of {totalQuestions} answered</span>
-          <span className="text-slate-300">•</span>
-          <span className="font-medium text-slate-700">{completionPercent}% completed</span>
         </div>
       </div>
 
       {/* Progress Track */}
-      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden relative">
+      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
         <div
           className="h-full bg-gradient-to-r from-[#18268e] to-blue-600 rounded-full transition-all duration-300 ease-out"
           style={{ width: `${progressPercent}%` }}

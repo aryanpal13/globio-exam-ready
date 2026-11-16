@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { useAssessment } from './hooks/useAssessment';
-import { Navbar } from './components/common/Navbar';
-import { Footer } from './components/common/Footer';
-import { Modal } from './components/common/Modal';
-import { Button } from './components/common/Button';
-import { Welcome } from './pages/Welcome';
-import { Instructions } from './pages/Instructions';
-import { Assessment } from './pages/Assessment';
-import { Results } from './pages/Results';
+import { useAssessment } from './hooks/useAssessment.js';
+import { Navbar } from './components/common/Navbar.jsx';
+import { Footer } from './components/common/Footer.jsx';
+import { Modal } from './components/common/Modal.jsx';
+import { Button } from './components/common/Button.jsx';
+import { Welcome } from './pages/Welcome.jsx';
+import { Instructions } from './pages/Instructions.jsx';
+import { Assessment } from './pages/Assessment.jsx';
+import { Results } from './pages/Results.jsx';
+import { Drill } from './pages/Drill.jsx';
 import { AlertCircle } from 'lucide-react';
 
 export function App() {
@@ -17,29 +18,35 @@ export function App() {
     currentIndex,
     currentQuestion,
     answers,
+    unsure,
+    history,
     hasStarted,
     isCompleted,
     result,
     isCurrentAnswered,
     unansweredQuestions,
     selectAnswer,
+    toggleUnsure,
     goToNextQuestion,
     goToPrevQuestion,
     jumpToQuestion,
     startAssessment,
+    resumeAssessment,
     completeAssessment,
-    resetAssessment
+    resetAssessment,
+    clearHistory
   } = useAssessment();
 
-  // Internal page navigation flow: 'welcome' | 'instructions' | 'assessment' | 'results'
+  // Internal page navigation flow: 'welcome' | 'instructions' | 'assessment' | 'results' | 'drill'
   const [currentPage, setCurrentPage] = useState('welcome');
+  const [activeDrillGroup, setActiveDrillGroup] = useState('numbers');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  // Synchronize completed state
+  // Synchronize completed and active states
   React.useEffect(() => {
-    if (isCompleted && result) {
+    if (isCompleted && result && currentPage !== 'drill') {
       setCurrentPage('results');
-    } else if (hasStarted && !isCompleted) {
+    } else if (hasStarted && !isCompleted && currentPage !== 'instructions') {
       setCurrentPage('assessment');
     }
   }, [isCompleted, result, hasStarted]);
@@ -54,7 +61,7 @@ export function App() {
   };
 
   const handleResume = () => {
-    startAssessment();
+    resumeAssessment();
     setCurrentPage('assessment');
   };
 
@@ -67,6 +74,15 @@ export function App() {
     resetAssessment();
     setShowResetConfirm(false);
     setCurrentPage('welcome');
+  };
+
+  const handleStartDrill = (groupId) => {
+    setActiveDrillGroup(groupId);
+    setCurrentPage('drill');
+  };
+
+  const handleBackFromDrill = () => {
+    setCurrentPage('results');
   };
 
   const answeredCount = Object.keys(answers).length;
@@ -106,9 +122,11 @@ export function App() {
             currentIndex={currentIndex}
             currentQuestion={currentQuestion}
             answers={answers}
+            unsure={unsure}
             isCurrentAnswered={isCurrentAnswered}
             unansweredQuestions={unansweredQuestions}
             onSelectAnswer={selectAnswer}
+            onToggleUnsure={toggleUnsure}
             onNext={goToNextQuestion}
             onPrev={goToPrevQuestion}
             onJumpToQuestion={jumpToQuestion}
@@ -120,7 +138,17 @@ export function App() {
           <Results
             result={result}
             questions={questions}
+            history={history}
             onRetake={handleRetake}
+            onStartDrill={handleStartDrill}
+            onClearHistory={clearHistory}
+          />
+        )}
+
+        {currentPage === 'drill' && (
+          <Drill
+            groupId={activeDrillGroup}
+            onBack={handleBackFromDrill}
           />
         )}
       </main>
@@ -141,7 +169,7 @@ export function App() {
             <div className="text-xs sm:text-sm text-amber-900">
               <span className="font-bold">Are you sure you want to restart?</span>
               <p className="mt-1 text-amber-800">
-                Restarting will clear your current answers and return you to the beginning. You can then start a fresh check-in attempt.
+                Restarting will clear your current answers and return you to the beginning. Your past attempt history will remain safely preserved.
               </p>
             </div>
           </div>
@@ -167,4 +195,5 @@ export function App() {
     </div>
   );
 }
+
 export default App;
