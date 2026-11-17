@@ -47,13 +47,24 @@ assert(res100.band === 4, '100% is Band 4 (80%+)');
 assert(res100.correctCount === 12, '12 of 12 correct');
 
 // 4. "I'm not completely sure" Confidence Weight Signal Test
-// Correct answer with unsure should NOT penalize the score, but adds weight to practice
+// Correct answer with unsure should NOT penalize the score, but adds weight to practice and flags guesswork
 const confidentAns = { q1: 3 };
 const unsureAns = { q1: 3 };
 const resConf = calculateAssessmentResult(confidentAns, {});
 const resUnsure = calculateAssessmentResult(unsureAns, { q1: true });
 assert(resConf.correctCount === 1 && resUnsure.correctCount === 1, 'Confidence never penalizes score');
 assert(resUnsure.overallPercentage === resConf.overallPercentage, 'Percentage is identical with unsure');
+assert(resUnsure.guessedCorrectQuestions.length === 1, 'Fuzzy / Guessed Correct question is tracked');
+assert(resUnsure.uncertaintyTopics.includes('Telling time'), 'Uncertainty topic tagged for Telling time');
+
+// 4b. All-correct session with 1 unsure question pulls that specific topic into recommendations
+const allRightWithUnsure = {};
+QUESTIONS.forEach(q => {
+  allRightWithUnsure[q.id] = q.answer;
+});
+const resAllRightUnsure = calculateAssessmentResult(allRightWithUnsure, { q1: true });
+assert(resAllRightUnsure.recommendations.some(r => r.groupId === 'numbers'), 'Guessed correct pulls topic into recommendations');
+assert(resAllRightUnsure.recommendations.some(r => r.isUncertaintyDriven), 'Recommendation tagged as uncertainty driven');
 
 // 5. Boundary Test: Unanswered questions separation
 const partiallyUnanswered = {

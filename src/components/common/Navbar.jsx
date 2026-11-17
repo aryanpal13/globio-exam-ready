@@ -4,7 +4,7 @@ import { ShieldCheck, RotateCcw, ExternalLink, Home } from 'lucide-react';
 export function Navbar({ onGoHome, onReset, hasStarted, isCompleted }) {
   return (
     <header className="sticky top-0 z-40 bg-[#18268e] text-white shadow-md border-b border-blue-900/40">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         {/* Brand Logo & Home Trigger */}
         <div className="flex items-center gap-3">
           <button

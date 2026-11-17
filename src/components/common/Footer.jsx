@@ -4,7 +4,7 @@ import { Shield, BookOpen, MessageCircle } from 'lucide-react';
 export function Footer() {
   return (
     <footer className="bg-slate-900 text-slate-400 text-sm mt-auto border-t border-slate-800">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand info */}
           <div className="md:col-span-2 space-y-3">
@@ -70,7 +70,7 @@ export function Footer() {
 
       {/* Floating WhatsApp Quick Contact Button (matches Globio website screenshot) */}
       <a
-        href="https://wa.me/919999999999?text=Hi%20Globio%2C%20I%20have%20a%20question%20about%20my%20German%20A1%20Exam-Ready%20results."
+        href="https://wa.me/91xxxxxxxxxx?text=Hi%20Globio%2C%20I%20have%20a%20question%20about%20my%20German%20A1%20Exam-Ready%20results."
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat with Globio German Academic Advisor on WhatsApp"

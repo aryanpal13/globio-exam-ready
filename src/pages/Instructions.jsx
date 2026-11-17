@@ -12,8 +12,9 @@ export function Instructions({ onStart, onBack }) {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-      <Card className="shadow-globio border-slate-200/90 p-6 sm:p-10">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <div className="max-w-4xl mx-auto">
+        <Card className="shadow-globio border-slate-200/90 p-6 sm:p-10">
         <div className="space-y-6">
           {/* Header */}
           <div className="space-y-2 pb-4 border-b border-slate-100">
@@ -74,6 +75,7 @@ export function Instructions({ onStart, onBack }) {
           </div>
         </div>
       </Card>
+      </div>
     </div>
   );
 }

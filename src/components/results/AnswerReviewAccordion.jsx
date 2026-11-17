@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Card } from '../common/Card';
-import { ChevronDown, ChevronUp, CheckCircle, XCircle, HelpCircle, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, XCircle, HelpCircle, AlertTriangle } from 'lucide-react';
 import { content } from '../../data/content.js';
 
-export function AnswerReviewAccordion({ questions, userAnswers, unsure = {} }) {
-  const [isOpen, setIsOpen] = useState(false);
+export function AnswerReviewAccordion({ questions, userAnswers, unsure = {}, defaultExpanded = false }) {
+  const [isOpen, setIsOpen] = useState(defaultExpanded);
   const [expandedQuestions, setExpandedQuestions] = useState({});
 
   const toggleQuestion = (qId) => {
@@ -81,24 +81,33 @@ export function AnswerReviewAccordion({ questions, userAnswers, unsure = {} }) {
               const isUnsure = !!unsure[q.id];
               const isExpanded = !!expandedQuestions[q.id];
 
-              let statusBadge = (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  <CheckCircle className="w-3 h-3 text-emerald-600" />
-                  Correct
-                </span>
-              );
+              let statusBadge = null;
 
-              if (isUnanswered) {
+              if (isUnsure) {
+                // Distinct amber badge explicitly tagging uncertainty/guessing as requested
                 statusBadge = (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
-                    <HelpCircle className="w-3 h-3 text-amber-600" />
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 px-2.5 py-0.5 rounded-full shadow-2xs">
+                    <span>⚠️ Guessed / Unsure (Review Concept)</span>
+                  </span>
+                );
+              } else if (isUnanswered) {
+                statusBadge = (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                    <HelpCircle className="w-3 h-3 text-slate-500" />
                     Unanswered
                   </span>
                 );
-              } else if (!isCorrect) {
+              } else if (isCorrect) {
                 statusBadge = (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
-                    <XCircle className="w-3 h-3 text-rose-500" />
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    <CheckCircle className="w-3 h-3 text-emerald-600" />
+                    Correct
+                  </span>
+                );
+              } else {
+                statusBadge = (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-800 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
+                    <XCircle className="w-3 h-3 text-rose-600" />
                     Needs Review
                   </span>
                 );
@@ -107,7 +116,11 @@ export function AnswerReviewAccordion({ questions, userAnswers, unsure = {} }) {
               return (
                 <div
                   key={q.id}
-                  className="rounded-2xl border border-slate-200 overflow-hidden bg-slate-50/40 transition-colors"
+                  className={`rounded-2xl border overflow-hidden transition-colors ${
+                    isUnsure
+                      ? 'border-amber-300/90 bg-amber-50/30'
+                      : 'border-slate-200 bg-slate-50/40'
+                  }`}
                 >
                   {/* Summary Bar */}
                   <button
@@ -154,6 +167,21 @@ export function AnswerReviewAccordion({ questions, userAnswers, unsure = {} }) {
                         <p className="font-semibold text-slate-900">{q.prompt}</p>
                       </div>
 
+                      {/* Explicit Guessing Notice Box */}
+                      {isUnsure && (
+                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/90 flex items-start gap-2.5 text-xs text-amber-950">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold">⚠️ Guessed / Unsure (Review Concept): </span>
+                            <span>
+                              {isCorrect
+                                ? "You answered correctly, but noted you weren't completely sure. We recommend reviewing this concept to convert guesswork into authentic mastery."
+                                : "You noted you were unsure and missed this question. Prioritize this topic in your practice drills."}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Answer Comparison */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                         {/* Learner's answer */}
@@ -175,8 +203,8 @@ export function AnswerReviewAccordion({ questions, userAnswers, unsure = {} }) {
                               : q.options[selectedIdx]}
                           </span>
                           {isUnsure && !isUnanswered && (
-                            <span className="block text-[11px] text-amber-700 font-medium mt-1">
-                              (you noted you weren't completely sure)
+                            <span className="block text-[11px] text-amber-800 font-bold mt-1">
+                              ⚠️ Marked as unsure / guess
                             </span>
                           )}
                         </div>
@@ -215,3 +243,5 @@ export function AnswerReviewAccordion({ questions, userAnswers, unsure = {} }) {
     </Card>
   );
 }
+
+export default AnswerReviewAccordion;

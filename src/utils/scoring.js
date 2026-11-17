@@ -24,7 +24,7 @@ export const evidenceForGroup = (g) => {
   }
   if (g.shaky) {
     parts.push(
-      `You answered ${g.shaky === 1 ? 'one question' : `${g.shaky} questions`} correctly but weren't completely sure, so a quick refresher could help.`
+      `You answered ${g.shaky === 1 ? 'one question' : `${g.shaky} questions`} correctly but noted you weren't completely sure, indicating a conceptual guesswork area that needs review.`
     );
   }
   return parts.join(' ');
@@ -33,21 +33,27 @@ export const evidenceForGroup = (g) => {
 export function calculateAssessmentResult(answers = {}, unsure = {}) {
   const skills = {};
   const groups = {};
+  const guessedCorrectQuestions = [];
+  const uncertaintyTopics = new Set();
 
   SKILLS.forEach((s) => {
-    skills[s] = { name: s, correct: 0, wrong: 0, blank: 0, total: 0 };
+    skills[s] = { name: s, correct: 0, wrong: 0, blank: 0, total: 0, fuzzy: 0 };
   });
 
   QUESTIONS.forEach((q) => {
     const a = answers[q.id];
     const isBlank = a === undefined || a === null;
     const isCorrect = !isBlank && a === q.answer;
+    const isUnsure = !!unsure[q.id];
     const status = isBlank ? 'blank' : isCorrect ? 'correct' : 'wrong';
 
     const sk = skills[q.skill];
     if (sk) {
       sk.total++;
       sk[status]++;
+      if (isCorrect && isUnsure) {
+        sk.fuzzy++;
+      }
     }
 
     if (!groups[q.group]) {
@@ -57,11 +63,13 @@ export function calculateAssessmentResult(answers = {}, unsure = {}) {
         wrong: 0,
         blank: 0,
         shaky: 0,
-        weight: 0
+        weight: 0,
+        topics: new Set()
       };
     }
     const g = groups[q.group];
     g.total++;
+    g.topics.add(q.topic);
 
     if (status === 'wrong') {
       g.wrong++;
@@ -69,10 +77,21 @@ export function calculateAssessmentResult(answers = {}, unsure = {}) {
     } else if (status === 'blank') {
       g.blank++;
       g.weight += 1;
-    } else if (status === 'correct' && unsure[q.id]) {
-      // Confidence is a signal only, NEVER a score penalty!
+    } else if (status === 'correct' && isUnsure) {
+      // Fuzzy / Guessed Correct state:
+      // Keep full credit for learner confidence, but tag topic as conceptual guesswork
+      // and give it high weight (+0.75) so it gets pulled into personalized recommendations.
       g.shaky++;
-      g.weight += 0.5;
+      g.weight += 0.75;
+      guessedCorrectQuestions.push({
+        id: q.id,
+        number: q.number,
+        topic: q.topic,
+        skill: q.skill,
+        prompt: q.prompt,
+        group: q.group
+      });
+      uncertaintyTopics.add(q.topic);
     }
   });
 
@@ -131,6 +150,10 @@ export function calculateAssessmentResult(answers = {}, unsure = {}) {
       }
     }
 
+    if (s.fuzzy > 0) {
+      interpretation += ` (Note: ${s.fuzzy} question${s.fuzzy > 1 ? 's were' : ' was'} answered correctly with reported uncertainty.)`;
+    }
+
     if (s.blank > 0) {
       interpretation += ` (Note: ${s.blank} question${s.blank > 1 ? 's were' : ' was'} left unanswered in this section.)`;
     }
@@ -145,6 +168,7 @@ export function calculateAssessmentResult(answers = {}, unsure = {}) {
       correct: s.correct,
       incorrect: s.wrong,
       unanswered: s.blank,
+      fuzzyCorrect: s.fuzzy,
       percentage: Math.round(pct),
       rawPct: pct,
       level,
@@ -183,6 +207,7 @@ export function calculateAssessmentResult(answers = {}, unsure = {}) {
     .slice(0, 3)
     .map((g) => {
       const catalogItem = GROUPS[g.id] || {};
+      const isUncertaintyDriven = g.shaky > 0 && g.wrong === 0 && g.blank === 0;
       return {
         ...catalogItem,
         groupId: g.id,
@@ -190,6 +215,8 @@ export function calculateAssessmentResult(answers = {}, unsure = {}) {
         blankCount: g.blank,
         shakyCount: g.shaky,
         weight: g.weight,
+        isUncertaintyDriven,
+        uncertaintyLabel: isUncertaintyDriven ? 'Conceptual Uncertainty / Guesswork Area' : null,
         evidence: evidenceForGroup(g),
         whatToRevisit: catalogItem.revisit || [],
         suggestedAction: catalogItem.action || ''
@@ -211,7 +238,9 @@ export function calculateAssessmentResult(answers = {}, unsure = {}) {
     specialGapNote,
     recommendations: recs,
     userAnswers: answers,
-    unsure
+    unsure,
+    guessedCorrectQuestions,
+    uncertaintyTopics: Array.from(uncertaintyTopics)
   };
 }
 

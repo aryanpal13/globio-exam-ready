@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAssessment } from './hooks/useAssessment.js';
+import { calculateAssessmentResult } from './utils/scoring.js';
 import { Navbar } from './components/common/Navbar.jsx';
 import { Footer } from './components/common/Footer.jsx';
 import { Modal } from './components/common/Modal.jsx';
@@ -15,7 +16,7 @@ export function App() {
   const {
     questions,
     totalQuestions,
-    currentIndex,
+    currentQuestionIndex,
     currentQuestion,
     answers,
     unsure,
@@ -49,17 +50,25 @@ export function App() {
   } = useAssessment();
 
   // Navigation flow: 'welcome' | 'instructions' | 'assessment' | 'results' | 'drill'
+  // ALWAYS initialize on the 'welcome' page on load / startup.
   const [currentPage, setCurrentPage] = useState('welcome');
+  const [restoredResult, setRestoredResult] = useState(null);
   const [activeDrillGroup, setActiveDrillGroup] = useState('numbers');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
-  // Sync state changes
+  // We do NOT auto-redirect to results on initial mount if state was restored from localStorage.
+  // The app always starts on the Welcome page, allowing the user to view the home screen or resume/view their attempt via deliberate user action.
+  const isInitialMount = React.useRef(true);
   React.useEffect(() => {
-    if (isCompleted && result && currentPage !== 'drill') {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (isCompleted && result && currentPage !== 'drill' && currentPage !== 'welcome') {
       setCurrentPage('results');
     }
-  }, [isCompleted, result]);
+  }, [isCompleted, result, currentPage]);
 
   const handleGoHome = () => {
     if (currentPage === 'assessment' && !isCompleted) {
@@ -108,6 +117,54 @@ export function App() {
     setCurrentPage('results');
   };
 
+  const handleViewResults = (savedAttemptData) => {
+    // If result is not already populated in useAssessment state, construct or restore it
+    if (!result) {
+      try {
+        let answersToUse = answers;
+        let unsureToUse = unsure;
+        let examToUse = examTimeline;
+        let planToUse = dailyPracticeTime;
+        let timeTakenToUse = 0;
+
+        if (savedAttemptData && savedAttemptData.answers) {
+          answersToUse = savedAttemptData.answers;
+          unsureToUse = savedAttemptData.unsure || {};
+          if (savedAttemptData.examTimeline) examToUse = savedAttemptData.examTimeline;
+          if (savedAttemptData.dailyPracticeTime) planToUse = savedAttemptData.dailyPracticeTime;
+          if (typeof savedAttemptData.secondsRemaining === 'number') {
+            timeTakenToUse = 600 - savedAttemptData.secondsRemaining;
+          }
+        } else {
+          // Check localStorage for active session or history
+          const stateRaw = localStorage.getItem('globio_assessment_state_v4');
+          if (stateRaw) {
+            const parsed = JSON.parse(stateRaw);
+            if (parsed.answers) {
+              answersToUse = parsed.answers;
+              unsureToUse = parsed.unsure || {};
+              if (typeof parsed.secondsRemaining === 'number') {
+                timeTakenToUse = 600 - parsed.secondsRemaining;
+              }
+            }
+          }
+        }
+
+        const calculated = calculateAssessmentResult(answersToUse || {}, unsureToUse || {});
+        calculated.plan = planToUse;
+        calculated.exam = examToUse;
+        calculated.timeTakenSeconds = timeTakenToUse;
+        
+        // Pass reconstructed result to Results page
+        setRestoredResult(calculated);
+      } catch (err) {
+        console.warn('Error reconstructing result from attempt data', err);
+      }
+    }
+
+    setCurrentPage('results');
+  };
+
   const answeredCount = Object.keys(answers).length;
 
   return (
@@ -126,7 +183,10 @@ export function App() {
           <Welcome
             onBegin={handleBegin}
             onResume={handleResume}
+            onViewResults={handleViewResults}
             hasSavedProgress={answeredCount > 0 && !isCompleted}
+            isCompleted={isCompleted}
+            history={history}
             answeredCount={answeredCount}
             totalQuestions={totalQuestions}
             examTimeline={examTimeline}
@@ -147,7 +207,7 @@ export function App() {
           <Assessment
             questions={questions}
             totalQuestions={totalQuestions}
-            currentIndex={currentIndex}
+            currentIndex={currentQuestionIndex}
             currentQuestion={currentQuestion}
             answers={answers}
             unsure={unsure}
@@ -170,7 +230,7 @@ export function App() {
 
         {currentPage === 'results' && (
           <Results
-            result={result}
+            result={result || restoredResult}
             questions={questions}
             history={history}
             onRetake={handleRetake}
