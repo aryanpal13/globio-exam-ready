@@ -79,7 +79,7 @@ export function Assessment({
             onSelectAnswer={onSelectAnswer}
             onToggleUnsure={onToggleUnsure}
             onPrevious={onPrev}
-            onContinue={onNext}
+            onContinue={hasNext ? onNext : handleOpenReview}
             hasPrevious={hasPrevious}
             hasNext={hasNext}
             isAnswered={isCurrentAnswered}

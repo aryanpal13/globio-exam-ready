@@ -126,7 +126,7 @@ export function QuestionCard({
             onClick={() => { if (onContinue) onContinue(); }}
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#18268e] hover:bg-[#131e72] text-white text-sm font-bold transition-all shadow-sm"
           >
-            Save & Next
+            {hasNext ? 'Save & Next' : 'Review & Submit'}
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
             </svg>
