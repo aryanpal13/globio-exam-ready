@@ -148,7 +148,7 @@ export function Welcome({
             <div className="flex items-center gap-2">
               <Compass className="w-4 h-4 text-[#18268e]" />
               <h3 className="text-sm font-bold text-slate-900">
-                Personalise your learning roadmap (Optional)
+                Personalise your learning roadmap
               </h3>
             </div>
             <p className="text-xs text-slate-500">
